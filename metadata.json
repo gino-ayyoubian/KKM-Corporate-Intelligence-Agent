@@ -1,0 +1,6 @@
+{
+  "name": "KKM Corporate Intelligence Agent v3.0",
+  "description": "Executive decision support workspace for KKM International Group and Kimia Karan Mad, delivering traceable corporate intelligence, evidence-backed strategy, and human review governance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
