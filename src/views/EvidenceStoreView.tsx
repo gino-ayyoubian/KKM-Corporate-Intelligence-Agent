@@ -50,12 +50,12 @@ export const EvidenceStoreView: React.FC<EvidenceStoreViewProps> = ({
             </h1>
             <p className="text-xs text-slate-300 mt-1 max-w-2xl">
               {isFa
-                ? 'مرجع حقیقت و استناد سامانه هوش سازمانی. تمامی تحلیل‌های مشورتی صرفاً بر پایه اسناد نسخهبندیشده این مخزن صادر می‌شوند.'
-                : 'Ground truth records for executive decision support. All AI assertions cite verifiable record IDs, dates, and strict epistemic scope boundaries.'}
+                ? 'رکوردهای این نمونه مستقل راستی‌آزمایی نشده‌اند و نباید واقعیت سازمانی تلقی شوند.'
+                : 'Prototype records have not been independently verified and must not be treated as company facts.'}
             </p>
           </div>
           <div className="px-3.5 py-2 bg-slate-950 rounded-lg border border-slate-800 font-mono text-xs text-amber-300 self-start">
-            {EVIDENCE_RECORDS.length} {isFa ? 'سند ثبت‌شده' : 'Verified Documents'}
+            {EVIDENCE_RECORDS.length} {isFa ? 'رکورد نمونه تأییدنشده' : 'Unverified Sample Records'}
           </div>
         </div>
 
@@ -95,6 +95,7 @@ export const EvidenceStoreView: React.FC<EvidenceStoreViewProps> = ({
             >
               <option value="ALL">{isFa ? 'تمامی وضعیت‌های صحه‌گذاری' : 'All Verification Statuses'}</option>
               <option value="Verified Record">{isFa ? 'سند تأیید شده (Verified)' : 'Verified Record'}</option>
+              <option value="Illustrative (Unverified)">{isFa ? 'نمونه (تأییدنشده)' : 'Illustrative (Unverified)'}</option>
               <option value="Engineering Estimate">{isFa ? 'برآورد مهندسی (Estimate)' : 'Engineering Estimate'}</option>
               <option value="Simulation Concept (Unvalidated)">
                 {isFa ? 'شبیه‌سازی / مفهوم (تأییدنشده)' : 'Simulation Concept (Unvalidated)'}
@@ -154,7 +155,7 @@ export const EvidenceStoreView: React.FC<EvidenceStoreViewProps> = ({
                   <span className="font-mono">{rec.date}</span>
                   <span>·</span>
                   <span className="font-mono text-amber-400 font-medium">
-                    {rec.confidenceScore}% Confidence
+                    {rec.confidenceScore}% Sample Score
                   </span>
                 </div>
                 <span className="text-amber-400 group-hover:translate-x-1 transition-transform">
