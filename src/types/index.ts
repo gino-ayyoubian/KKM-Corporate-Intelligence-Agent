@@ -25,6 +25,7 @@ export type ClassificationLevel = 'Public-Sample' | 'Internal-Controlled' | 'Con
 
 export type VerificationStatus =
   | 'Verified Record'
+  | 'Illustrative (Unverified)'
   | 'Engineering Estimate'
   | 'Simulation Concept (Unvalidated)';
 
@@ -114,7 +115,7 @@ export interface DecisionReport {
   createdAt: string;
   status: 'Draft' | 'Finalized' | 'Pending Human Sign-off';
   executiveConclusion: string;
-  verifiedEvidence: string[]; // record IDs
+  referencedEvidence: string[]; // record IDs; references are not proof of verification
   strategicAlternatives: StrategicAlternative[];
   riskMatrix: RiskMatrixItem[];
   recommendation: string;
