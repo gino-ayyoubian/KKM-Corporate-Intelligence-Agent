@@ -1,25 +1,23 @@
 import React, { useState } from 'react';
 import {
-  FileText,
   Download,
-  Printer,
   Sparkles,
-  ShieldCheck,
-  AlertCircle,
   Copy,
   Check,
 } from 'lucide-react';
-import { MODULES, EVIDENCE_RECORDS } from '../data/evidenceRepository';
+import { MODULES } from '../data/evidenceRepository';
 import { ModuleId, Language, DecisionReport } from '../types';
-import { generateStructuredReport, reportToMarkdown } from '../../server/api/reportHandler';
+import { generateReport } from '../api/client';
 
 interface ReportBuilderViewProps {
   language: Language;
+  apiToken: string;
   onInspectRecord: (recordId: string) => void;
 }
 
 export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
   language,
+  apiToken,
   onInspectRecord,
 }) => {
   const isFa = language === 'fa';
@@ -27,22 +25,33 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
   const [reportTitle, setReportTitle] = useState('');
   const [customContext, setCustomContext] = useState('');
   const [activeReport, setActiveReport] = useState<DecisionReport | null>(null);
+  const [activeMarkdown, setActiveMarkdown] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [reportError, setReportError] = useState(false);
 
-  const handleGenerateReport = () => {
-    const report = generateStructuredReport({
-      title: reportTitle.trim(),
-      moduleId: selectedModule,
-      language,
-      customContext,
-    });
-    setActiveReport(report);
+  const handleGenerateReport = async () => {
+    setIsGenerating(true);
+    setReportError(false);
+    try {
+      const result = await generateReport({
+        title: reportTitle.trim(),
+        moduleId: selectedModule,
+        language,
+        customContext,
+      }, apiToken);
+      setActiveReport(result.report);
+      setActiveMarkdown(result.markdown);
+    } catch {
+      setReportError(true);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDownloadMarkdown = () => {
     if (!activeReport) return;
-    const md = reportToMarkdown(activeReport);
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([activeMarkdown], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -65,8 +74,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
 
   const handleCopyMarkdown = () => {
     if (!activeReport) return;
-    const md = reportToMarkdown(activeReport);
-    navigator.clipboard.writeText(md);
+    navigator.clipboard.writeText(activeMarkdown);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -116,6 +124,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
             </label>
             <input
               type="text"
+              maxLength={200}
               value={reportTitle}
               onChange={(e) => setReportTitle(e.target.value)}
               placeholder={
@@ -130,13 +139,31 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
           <div className="flex items-end">
             <button
               onClick={handleGenerateReport}
-              className="w-full py-2 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors"
+              disabled={isGenerating}
+              className="w-full py-2 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{isFa ? 'تولید گزارش ساختاریافته' : 'Generate Decision Brief'}</span>
+              <span>{isGenerating ? (isFa ? 'در حال تولید...' : 'Generating...') : isFa ? 'تولید گزارش ساختاریافته' : 'Generate Decision Brief'}</span>
             </button>
           </div>
+          <div className="md:col-span-3">
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              {isFa ? 'زمینه تکمیلی (به‌عنوان ورودی تأییدنشده درج می‌شود):' : 'Additional context (included as unverified user input):'}
+            </label>
+            <textarea
+              value={customContext}
+              onChange={(e) => setCustomContext(e.target.value)}
+              maxLength={4000}
+              rows={3}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+            />
+          </div>
         </div>
+        {reportError && (
+          <p role="alert" className="mt-3 text-xs text-rose-300">
+            {isFa ? 'گزارش از API در دسترس تولید نشد. وضعیت سرویس را بررسی کنید.' : 'The report API is unavailable. Check the service status.'}
+          </p>
+        )}
       </div>
 
       {/* Generated Report Preview Area */}
@@ -206,10 +233,10 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
             {/* 2. Verified Evidence */}
             <div>
               <h3 className="text-sm font-semibold text-amber-300 uppercase tracking-wider mb-2">
-                2. {isFa ? 'شواهد و مدارک معتبر استناد شده' : 'Verified Evidence & Ground Truth Citations'}
+                2. {isFa ? 'رکوردهای نمونه ارجاع‌شده (تأییدنشده)' : 'Referenced Sample Records (Unverified)'}
               </h3>
               <div className="flex flex-wrap gap-2">
-                {activeReport.verifiedEvidence.map((recId) => (
+                {activeReport.referencedEvidence.map((recId) => (
                   <button
                     key={recId}
                     onClick={() => onInspectRecord(recId)}
@@ -217,7 +244,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
                   >
                     <span>[{recId}]</span>
                     <span className="text-[11px] text-slate-400 font-sans">
-                      {isFa ? 'بررسی جزئیات سند ←' : 'Inspect Document →'}
+                      {isFa ? 'رکورد نمونه؛ تأییدنشده' : 'Illustrative; unverified'}
                     </span>
                   </button>
                 ))}

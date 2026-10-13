@@ -7,7 +7,7 @@ import { DecisionReport, ModuleId, Language } from '../../src/types';
 import { EVIDENCE_RECORDS, MODULES } from '../../src/data/evidenceRepository';
 
 export interface ReportRequestPayload {
-  title: string;
+  title?: string;
   moduleId: ModuleId;
   language: Language;
   customContext?: string;

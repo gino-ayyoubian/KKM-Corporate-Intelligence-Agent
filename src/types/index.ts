@@ -151,3 +151,12 @@ export interface EvaluationCase {
   result: 'passed' | 'warning' | 'failed';
   details: string;
 }
+
+export interface EvaluationResult {
+  totalTests: number;
+  passedTests: number;
+  warningTests: number;
+  failedTests: number;
+  cases: EvaluationCase[];
+  evaluatedAt: string;
+}

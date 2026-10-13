@@ -65,7 +65,7 @@ export function generateCorporateIntelligenceResponse(
   };
 
   const content = language === 'fa'
-    ? `### پاسخ شبیه‌سازی‌شده\nداده‌های موجود در این نمونه را نمی‌توان به‌عنوان واقعیت تأییدشده شرکت تلقی کرد. برای پاسخ مستند، سند اصلی مرتبط باید بررسی شود. این پاسخ تحلیل واقعی یا توصیه تصمیم‌گیری ارائه نمی‌کند.${sensitiveActionProposal ? '\n\nاجرای اقدام حساس خودکار نیست و نیازمند بررسی و تأیید انسانی است.' : ''}`
+    ? `### پاسخ شبیه‌سازی‌شده\nداده‌های نمونه تأییدنشده‌اند و نباید واقعیت شرکت تلقی شوند. برای پاسخ مستند، سند اصلی مرتبط باید بررسی شود. این پاسخ تحلیل واقعی یا توصیه تصمیم‌گیری ارائه نمی‌کند.${sensitiveActionProposal ? '\n\nاجرای اقدام حساس خودکار نیست و نیازمند بررسی و تأیید انسانی است.' : ''}`
     : `### Simulated response\nData in this prototype cannot be treated as verified company facts. A relevant primary source must be reviewed for an evidence-based answer. This response provides no substantive analysis or decision recommendation.${sensitiveActionProposal ? '\n\nSensitive actions are not automated and require human review and approval.' : ''}`;
 
   return {

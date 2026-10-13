@@ -30,6 +30,7 @@ interface ChatViewProps {
   messages: ChatMessage[];
   onSendMessage: (text: string, moduleId: ModuleId) => Promise<void>;
   isLoading: boolean;
+  hasError: boolean;
   onInspectRecord: (recordId: string) => void;
   onOpenActionReview: (action: SensitiveAction) => void;
   onClearChat: () => void;
@@ -43,6 +44,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   messages,
   onSendMessage,
   isLoading,
+  hasError,
   onInspectRecord,
   onOpenActionReview,
   onClearChat,
@@ -244,8 +246,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </h3>
               <p className="text-xs text-slate-400 mt-1 max-w-lg">
                 {isFa
-                  ? `ماژول فعال: ${activeModule.code} (${activeModule.titleFa}). کلیه پاسخ‌ها مستند به سوابق کنترل‌شده سازمانی و با تفکیک شواهد، فرضیات و پیشنهادات ارائه می‌شوند.`
-                  : `Active Module: ${activeModule.code} (${activeModule.titleEn}). Queries evaluate against verified company records with epistemic separation.`}
+                  ? `ماژول فعال: ${activeModule.code} (${activeModule.titleFa}). داده‌های نمونه تأییدنشده‌اند و پاسخ‌ها نباید واقعیت سازمانی تلقی شوند.`
+                  : `Active Module: ${activeModule.code} (${activeModule.titleEn}). Prototype records are unverified and responses must not be treated as company facts.`}
               </p>
             </div>
 
@@ -316,14 +318,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2">
                     <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
                       <FileCheck2 className="w-3.5 h-3.5 text-amber-400" />
-                      {isFa ? 'اسناد استناد شده:' : 'Cited Ground Truth Records:'}
+                      {isFa ? 'رکوردهای نمونه ارجاع‌شده (تأییدنشده):' : 'Referenced sample records (unverified):'}
                     </span>
                     {msg.citations.map((recId) => (
                       <button
                         key={recId}
                         onClick={() => onInspectRecord(recId)}
                         className="px-2 py-0.5 rounded text-[11px] font-mono bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors"
-                        title="Inspect verified document details"
+                        title="Inspect illustrative record"
                       >
                         [{recId}]
                       </button>
@@ -385,6 +387,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Input Box Footer */}
       <div className="bg-slate-900 border border-slate-800 rounded-b-xl p-3 md:p-4">
+        {hasError && (
+          <p role="alert" className="mb-3 text-xs text-rose-300">
+            {isFa
+              ? 'سرویس چت در دسترس نیست. پاسخ شبیه‌سازی‌شده‌ای تولید نشده است؛ دوباره تلاش کنید یا وضعیت سرویس را بررسی کنید.'
+              : 'The chat service is unavailable. No simulated answer was generated; retry or check the service status.'}
+          </p>
+        )}
         {/* Quick prompt suggestions when messages exist */}
         {messages.length > 0 && (
           <div className="mb-2.5 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] text-slate-400">

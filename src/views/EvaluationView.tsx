@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Sliders,
   CheckCircle2,
@@ -10,48 +10,61 @@ import {
   ListChecks,
   Lock,
 } from 'lucide-react';
-import { EVALUATION_TEST_CASES } from '../data/evidenceRepository';
-import { EvaluationCase, Language } from '../types';
-import { runSystemEvaluation, EvaluationResult } from '../../server/api/evaluateHandler';
+import { Language, EvaluationResult } from '../types';
+import { runEvaluation } from '../api/client';
 
 interface EvaluationViewProps {
   language: Language;
+  apiToken: string;
 }
 
-export const EvaluationView: React.FC<EvaluationViewProps> = ({ language }) => {
+export const EvaluationView: React.FC<EvaluationViewProps> = ({ language, apiToken }) => {
   const isFa = language === 'fa';
   const [isRunning, setIsRunning] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult>(() =>
-    runSystemEvaluation()
-  );
+  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult>({
+    totalTests: 0,
+    passedTests: 0,
+    warningTests: 0,
+    failedTests: 0,
+    cases: [],
+    evaluatedAt: '',
+  });
+  const [evaluationError, setEvaluationError] = useState(false);
 
-  const handleRunTests = () => {
+  const handleRunTests = async () => {
     setIsRunning(true);
-    setTimeout(() => {
-      const res = runSystemEvaluation();
-      setEvaluationResult(res);
+    setEvaluationError(false);
+    try {
+      setEvaluationResult(await runEvaluation(apiToken));
+    } catch {
+      setEvaluationError(true);
+    } finally {
       setIsRunning(false);
-    }, 600);
+    }
   };
+
+  useEffect(() => {
+    void handleRunTests();
+  }, []);
 
   const threatModelItems = [
     {
       titleEn: 'Threat 1: LLM Hallucination of Technical/Patent Claims',
       titleFa: 'تهدید ۱: جعل ادعاهای فنی یا وضعیت ثبت اختراع توسط مدل زبانی',
-      mitigationEn: 'Controlled Knowledge Grounding: Agent explicitly cites record IDs with documented confidence and boundary limitations. Extrapolation beyond TRL 4 is prohibited by system instructions.',
-      mitigationFa: 'استناد انحصاری به مخزن مدارک کنترل‌شده: درج اجباری شناسه سند، نمره اطمینان و مرزبندی TRL 4 مانع از تعمیم شبیه‌سازی به ادعای میدانی می‌شود.',
+      mitigationEn: 'Unverified Sample Data: Repository records are not treated as established facts; primary source documents are required for decision support.',
+      mitigationFa: 'داده‌های نمونه تأییدنشده: رکوردهای مخزن واقعیت تثبیت‌شده تلقی نمی‌شوند و برای پشتیبانی تصمیم، اسناد اصلی لازم است.',
     },
     {
       titleEn: 'Threat 2: Unauthorized Production Execution & Credential Leakage',
       titleFa: 'تهدید ۲: اجرای غیرمجاز بر سامانه‌های عملیاتی و افشای کلیدهای دسترسی',
-      mitigationEn: 'Server Proxy Isolation: Gemini SDK is executed strictly server-side. Zero API keys exposed to browser bundles. Automated execution against banking, DNS, or SCADA is architecturally blocked.',
-      mitigationFa: 'ایزولاسیون پروکسی سرور: ارتباط با Gemini صرفاً سمت سرور Node.js انجام شده و هیچ کلید یا رمزی به مرورگر ارسال نمی‌گردد. اجرای دستورات روی سامانه‌های عملیاتی غیرممکن است.',
+      mitigationEn: 'Server Proxy Isolation: Gemini SDK requests run server-side. The prototype has no write adapters for banking, DNS, or SCADA; this is not a production security certification.',
+      mitigationFa: 'ایزولاسیون پروکسی سرور: درخواست‌های Gemini سمت سرور اجرا می‌شوند. نمونه اولیه اتصال نوشتنی به بانک، DNS یا SCADA ندارد؛ این موضوع گواهی امنیت عملیاتی نیست.',
     },
     {
       titleEn: 'Threat 3: Prompt Injection Overriding Governance Principles',
       titleFa: 'تهدید ۳: تزریق پرامپت جهت دور زدن اصول حاکمیتی و دروازه تایید',
-      mitigationEn: 'Data vs Authority Separation: User inputs are treated strictly as data, never as authority to bypass human sign-off gates or invent corporate authorization.',
-      mitigationFa: 'تفکیک داده از مرجعیت حاکمیتی: ورودی‌های کاربر صرفاً به عنوان داده پردازش شده و قادر به دور زدن الزام تأیید انسانی نیستند.',
+      mitigationEn: 'Prompt Injection: System instructions are not a substitute for adversarial testing or a production policy enforcement layer.',
+      mitigationFa: 'تزریق پرامپت: دستورهای سیستمی جایگزین آزمون خصمانه یا لایه اعمال سیاست در محیط عملیاتی نیستند.',
     },
   ];
 
@@ -80,23 +93,23 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({ language }) => {
     {
       titleEn: 'Decoupled API Handler Architecture for Serverless / Cloud Run',
       titleFa: 'معماری ماژولار هندلرهای API برای استقرار سرورلس و Cloud Run',
-      statusEn: 'Verified & Implemented',
-      statusFa: 'پیاده‌سازی و صحه‌گذاری شده',
+      statusEn: 'Implemented; not independently audited',
+      statusFa: 'پیاده‌سازی شده؛ ممیزی مستقل نشده',
       done: true,
     },
     {
       titleEn: 'Epistemic Taxonomy Separation (Facts vs Assumptions vs Advice)',
       titleFa: 'تفکیک ساختاریافته معرفتی (شواهد، مفروضات، برآوردها و پیشنهادها)',
-      statusEn: 'Verified & Implemented',
-      statusFa: 'پیاده‌سازی و صحه‌گذاری شده',
-      done: true,
+      statusEn: 'Prototype only; not validated',
+      statusFa: 'نمونه اولیه؛ اعتبارسنجی نشده',
+      done: false,
     },
     {
       titleEn: 'Human-in-the-Loop Approval Gate for Sensitive Financial/IP Actions',
       titleFa: 'دروازه نظارت انسانی برای تصمیمات حساس مالی، حقوقی و میدانی',
-      statusEn: 'Verified & Implemented',
-      statusFa: 'پیاده‌سازی و صحه‌گذاری شده',
-      done: true,
+      statusEn: 'Simulated; no authenticated sign-off',
+      statusFa: 'شبیه‌سازی‌شده؛ بدون تأیید هویت‌شده',
+      done: false,
     },
   ];
 
@@ -107,9 +120,9 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({ language }) => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-amber-400 mb-1">
-              <span>SYSTEM VERIFICATION HARNESS</span>
+              <span>PROTOTYPE SELF-CHECKS</span>
               <span>·</span>
-              <span>SAFETY & AUDIT SUITE</span>
+              <span>NOT AN INDEPENDENT AUDIT</span>
             </div>
             <h1 className="text-xl font-bold text-white tracking-tight">
               {isFa
@@ -118,10 +131,16 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({ language }) => {
             </h1>
             <p className="text-xs text-slate-300 mt-1 max-w-3xl">
               {isFa
-                ? 'اجرای آزمون‌های خودکار صحه‌گذاری مرزهای معرفتی، مدل‌سازی تهدیدات امنیتی، فهرست محدودیت‌های شناخته‌شده و الزامات استقرار عملیاتی.'
-                : 'Automated test suite verifying epistemic boundaries, credential isolation, threat mitigations, and the production readiness roadmap.'}
+                ? 'آزمون‌های داخلی نمونه اولیه جایگزین ارزیابی امنیتی یا تأیید مستقل نیستند.'
+                : 'Prototype self-checks are not an independent security assessment or production approval.'}
             </p>
           </div>
+
+          {evaluationError && (
+            <p role="alert" className="text-xs text-rose-300">
+              {isFa ? 'آزمون‌ها از API در دسترس اجرا نشدند.' : 'Tests could not be loaded from the API.'}
+            </p>
+          )}
 
           <button
             onClick={handleRunTests}

@@ -120,7 +120,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({ record, onClose,
           {/* Authoritative Excerpt */}
           <div>
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-              {isFa ? 'متن بند استناد شده' : 'Authoritative Record Excerpt'}
+              {isFa ? 'متن رکورد نمونه' : 'Illustrative Sample Excerpt'}
             </h3>
             <blockquote className="p-3.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-amber-200/90 leading-relaxed">
               "{isFa ? record.fullExcerptFa : record.fullExcerptEn}"
@@ -141,12 +141,12 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({ record, onClose,
                       <span className="font-mono text-slate-200 font-medium">{m.value}</span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                          m.verified
+                          m.verified && record.verificationStatus === 'Verified Record'
                             ? 'bg-emerald-950/60 text-emerald-400'
                             : 'bg-amber-950/60 text-amber-400'
                         }`}
                       >
-                        {m.verified ? 'Verified' : 'Estimate'}
+                        {m.verified && record.verificationStatus === 'Verified Record' ? 'Verified' : 'Unverified'}
                       </span>
                     </div>
                   </div>

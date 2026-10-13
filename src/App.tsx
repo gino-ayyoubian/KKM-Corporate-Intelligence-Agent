@@ -31,7 +31,6 @@ import {
   EVIDENCE_RECORDS,
   INITIAL_SENSITIVE_ACTIONS,
 } from './data/evidenceRepository';
-import { generateCorporateIntelligenceResponse } from '../server/knowledgeEngine';
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('en');
@@ -46,6 +45,10 @@ export default function App() {
   const [actionsList, setActionsList] = useState<SensitiveAction[]>(INITIAL_SENSITIVE_ACTIONS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState(false);
+  const [apiToken, setApiToken] = useState('');
+  const [apiAccessGranted, setApiAccessGranted] = useState(false);
+  const [accessError, setAccessError] = useState(false);
 
   // Sync document direction and lang attribute with selected language
   useEffect(() => {
@@ -54,6 +57,22 @@ export default function App() {
   }, [language]);
 
   const activeModule = MODULES.find((m) => m.id === activeModuleId) || MODULES[0];
+
+  const handleApiAccess = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const token = apiToken.trim();
+    try {
+      const response = await fetch('/api/agent/health', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
+      });
+      if (!response.ok) throw new Error('API access denied');
+      setApiToken(token);
+      setApiAccessGranted(true);
+      setAccessError(false);
+    } catch {
+      setAccessError(true);
+    }
+  };
 
   const viewTitles: Record<ViewKey, { en: string; fa: string }> = {
     overview: { en: 'Executive Overview', fa: 'داشبورد مدیریتی' },
@@ -78,12 +97,16 @@ export default function App() {
 
     setChatMessages((prev) => [...prev, userMessage]);
     setIsChatLoading(true);
+    setChatError(false);
 
     try {
       // Call server API endpoint
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiToken ? { Authorization: 'Bearer ' + apiToken } : {}),
+        },
         body: JSON.stringify({
           prompt: text,
           moduleId,
@@ -119,29 +142,8 @@ export default function App() {
         throw new Error(`Server returned ${response.status}`);
       }
     } catch (err) {
-      console.warn('[KKM Client] Direct API call fallback to local engine:', err);
-      // Seamless client-side fallback
-      const localResult = generateCorporateIntelligenceResponse(text, moduleId, language);
-      const assistantMessage: ChatMessage = {
-        id: `AST-${Date.now()}`,
-        role: 'assistant',
-        timestamp: new Date().toISOString(),
-        moduleId,
-        content: localResult.content,
-        engineMode: 'simulated',
-        citations: localResult.citations,
-        epistemicBreakdown: localResult.epistemicBreakdown,
-        sensitiveActionProposal: localResult.sensitiveActionProposal,
-      };
-
-      if (localResult.sensitiveActionProposal) {
-        setActionsList((prev) => {
-          if (prev.some((a) => a.id === localResult.sensitiveActionProposal!.id)) return prev;
-          return [localResult.sensitiveActionProposal!, ...prev];
-        });
-      }
-
-      setChatMessages((prev) => [...prev, assistantMessage]);
+      console.error('[KKM Client] Chat API request failed:', err);
+      setChatError(true);
     } finally {
       setIsChatLoading(false);
     }
@@ -177,6 +179,42 @@ export default function App() {
   };
 
   const pendingApprovalsCount = actionsList.filter((a) => a.status === 'pending').length;
+
+  if (!apiAccessGranted) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+        <form onSubmit={handleApiAccess} className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold">{language === 'fa' ? 'دسترسی API' : 'API Access'}</h1>
+            <button type="button" onClick={() => setLanguage(language === 'fa' ? 'en' : 'fa')} className="text-xs text-amber-300">
+              {language === 'fa' ? 'English' : 'فارسی'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400">
+            {language === 'fa'
+              ? 'برای اعتبارسنجی دسترسی، توکن API را وارد کنید. توکن در مرورگر ذخیره نمی‌شود.'
+              : 'Enter the API access token to validate access. The token is kept in memory and is not stored in the browser.'}
+          </p>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={apiToken}
+            onChange={(event) => setApiToken(event.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+            aria-label={language === 'fa' ? 'توکن API' : 'API token'}
+          />
+          {accessError && (
+            <p role="alert" className="text-xs text-rose-300">
+              {language === 'fa' ? 'دسترسی API تأیید نشد.' : 'API access could not be verified.'}
+            </p>
+          )}
+          <button type="submit" className="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950">
+            {language === 'fa' ? 'ادامه' : 'Continue'}
+          </button>
+        </form>
+      </main>
+    );
+  }
 
   return (
     <div
@@ -235,9 +273,13 @@ export default function App() {
               messages={chatMessages}
               onSendMessage={handleSendMessage}
               isLoading={isChatLoading}
+              hasError={chatError}
               onInspectRecord={handleInspectRecordById}
               onOpenActionReview={(action) => setActionToReview(action)}
-              onClearChat={() => setChatMessages([])}
+              onClearChat={() => {
+                setChatMessages([]);
+                setChatError(false);
+              }}
             />
           )}
 
@@ -251,6 +293,7 @@ export default function App() {
           {currentView === 'reports' && (
             <ReportBuilderView
               language={language}
+              apiToken={apiToken}
               onInspectRecord={handleInspectRecordById}
             />
           )}
@@ -268,7 +311,7 @@ export default function App() {
           )}
 
           {currentView === 'evaluation' && (
-            <EvaluationView language={language} />
+            <EvaluationView language={language} apiToken={apiToken} />
           )}
         </main>
       </div>
