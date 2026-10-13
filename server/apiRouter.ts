@@ -6,7 +6,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createHash, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import { ChatRequestPayload, handleChatRequest } from './api/chatHandler';
 import { generateStructuredReport, reportToMarkdown, ReportRequestPayload } from './api/reportHandler';
 import { runSystemEvaluation } from './api/evaluateHandler';
@@ -73,9 +73,9 @@ function hasApiAccess(req: IncomingMessage): boolean {
 
   const authorization = req.headers.authorization || '';
   const suppliedToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-  const expectedDigest = createHash('sha256').update(configuredToken).digest();
-  const suppliedDigest = createHash('sha256').update(suppliedToken).digest();
-  return timingSafeEqual(expectedDigest, suppliedDigest);
+  const expectedBytes = Buffer.from(configuredToken);
+  const suppliedBytes = Buffer.from(suppliedToken);
+  return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
 }
 
 function isRateLimited(req: IncomingMessage): boolean {
